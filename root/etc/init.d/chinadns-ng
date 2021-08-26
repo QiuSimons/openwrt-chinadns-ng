@@ -13,6 +13,51 @@ USE_PROCD=1
 
 CRON_FILE=/etc/crontabs/root
 
+restore_setting()
+{
+    sed -i "/list server/d" /etc/config/dhcp
+    sed -i "/dhcp_option/d" /etc/config/dhcp
+    uci commit dhcp
+    uci set shadowsocksr.@global[0].pdnsd_enable='1'
+    uci set shadowsocksr.@global[0].tunnel_forward='8.8.4.4:53'
+    uci commit shadowsocksr
+    uci del network.lan.dns
+    uci del network.wan.peerdns
+    uci del network.wan.dns
+    uci commit network
+}
+
+prepare_setting()
+{
+    sed -i "/list server/d" /etc/config/dhcp
+	bind_port=$(uci -q get chinadns-ng.@chinadns-ng[0].bind_port)
+    uci add_list dhcp.@dnsmasq[0].server='127.0.0.1#'$bind_port''
+    uci set dhcp.@dnsmasq[0].rebind_protection='0'
+    lanip="$(uci get network.lan.ipaddr)"
+    sed -i "/dhcp_option/d" /etc/config/dhcp
+    sed -i "/dhcpv6/a\\\tlist dhcp_option '6,$lanip'" /etc/config/dhcp
+    uci commit dhcp
+    uci set shadowsocksr.@global[0].dports='1'
+    uci set shadowsocksr.@global[0].pdnsd_enable='0'
+    uci del shadowsocksr.@global[0].tunnel_forward
+    uci commit shadowsocksr
+    sed -i "/list dns/d" /etc/config/network
+    uci set network.wan.peerdns='0'
+    uci add_list network.wan.dns='127.0.0.1'
+    uci add_list network.lan.dns='127.0.0.1'
+    uci commit network
+}
+
+restart_others()
+{
+    /etc/init.d/network reload
+    /etc/init.d/dnsmasq reload
+    ps | grep ssrplus |grep -v grep
+    if [ $? -eq 0 ];  then
+      /etc/init.d/shadowsocksr restart
+    fi
+}
+
 append_param() {
 	local section="$1"
 	local option="$2"
@@ -175,13 +220,26 @@ service_triggers() {
 }
 
 start_service() {
+    enabled=$(uci -q get chinadns-ng.@chinadns-ng[0].enable)
+    if [ "$enabled" -eq 0 ]; then
+    firstblood=$(uci -q get chinadns-ng.@chinadns-ng[0].not_first_start)
+	[ "${firstblood}" = "0" ] && restore_setting && restart_others
+        return 0
+    fi
+	uci set chinadns-ng.@chinadns-ng[0].not_first_start='1'
+    uci commit chinadns-ng
+	prepare_setting
 	config_load chinadns-ng
 	config_foreach create_chnroute_ipset chinadns-ng
 	config_foreach add_cron chinadns-ng
 	config_foreach start_chinadns_ng chinadns-ng
+	restart_others
 }
 
 stop_service() {
+	local enable
+	config_get_bool enable $1 enable
+	[ "$enable" = 0 ] || restore_setting && restart_others
 	config_load chinadns-ng
 	config_foreach destroy_chnroute_ipset chinadns-ng
 	del_cron
