@@ -228,9 +228,7 @@ start_service() {
     fi
 	uci set chinadns-ng.@chinadns-ng[0].not_first_start='1'
     uci commit chinadns-ng
-	redirect=$(uci -q get chinadns-ng.@chinadns-ng[0].redirect)
-	[ "$redirect" = 0 ] || prepare_setting
-	[ "$redirect" = 1 ] || restore_setting
+	prepare_setting
 	config_load chinadns-ng
 	config_foreach create_chnroute_ipset chinadns-ng
 	config_foreach add_cron chinadns-ng

@@ -17,5 +17,4 @@ config chinadns-ng
 	option trust_dns '127.0.0.1#6051'
 	option not_first_start '0'
 	option enable '0'
-	option redirect '1'
 
