@@ -7,6 +7,9 @@ msgstr "github 项目地址"
 msgid "RUNNING"
 msgstr "运行中"
 
+msgid "DNS Redirect"
+msgstr "DNS 重定向"
+
 msgid "NOT RUNNING"
 msgstr "未运行"
 

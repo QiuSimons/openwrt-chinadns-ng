@@ -21,6 +21,9 @@ o = s:option(Flag, "fair_mode",
 	translate("Enable the Fair_Mode or use the Compete_Mode"))
 o.rmempty     = false
 
+o = s:option(Flag, "redirect", translate("DNS Redirect"))
+o.rmempty     = false
+
 o = s:option(Value, "bind_port", translate("Listen Port"))
 o.placeholder = 5353
 o.default     = 5353
